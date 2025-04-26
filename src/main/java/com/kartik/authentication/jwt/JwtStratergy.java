@@ -12,15 +12,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+
 
 @Component
 public class JwtStratergy implements AuthenticationStratergy {
@@ -37,8 +33,6 @@ public class JwtStratergy implements AuthenticationStratergy {
     public Boolean authenticate(HttpServletRequest request, HttpServletResponse response)
     {
         String token = request.getHeader("Authorization");
-        System.out.println(token);
-        int errorCode = HttpServletResponse.SC_OK;
         if(token == null || token.isEmpty())
         {
             throw new TokenNotFound("Cannot find token in Authorization header!");
@@ -47,8 +41,10 @@ public class JwtStratergy implements AuthenticationStratergy {
         HashMap<String, String> user = new HashMap<>();
 
         try {
-            String email = jwtUtil.extractClaim(token, Claims::getSubject);
-            user.put("email", email);
+            for(String field : config.getClaimFields())
+            {
+                user.put(field, jwtUtil.extractClaim(token, claims -> claims.get(field, String.class)));
+            }
             request.setAttribute("user", user);
         } catch (ExpiredJwtException e) {
             sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "Token expired");
@@ -119,8 +115,6 @@ public class JwtStratergy implements AuthenticationStratergy {
 
         for (String field : requestBody.keySet()) {
             Object value = requestBody.get(field);
-
-            System.out.println(value);
             if (value != null) {
                 claims.put(field, value);
             }
