@@ -11,18 +11,16 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+
 
 
 @Component
 public class JwtStratergy implements AuthenticationStratergy {
 
-    private JwtUtil jwtUtil;
-    private JwtLoginConfig config;
+    private final JwtUtil jwtUtil;
+    private final JwtLoginConfig config;
 
     @Autowired
     public JwtStratergy(JwtUtil util,@Lazy JwtLoginConfig config)
@@ -77,41 +75,17 @@ public class JwtStratergy implements AuthenticationStratergy {
     }
 
 
-    public Map<String, Object> extractRequestFields(HttpServletRequest request, List<String> fields) throws IOException {
-        ObjectMapper objectMapper = new ObjectMapper();
-        JsonNode rootNode = objectMapper.readTree(request.getInputStream());
-
-        Map<String, Object> result = new HashMap<>();
-
-        for (String field : fields) {
-            if (rootNode.has(field)) {
-                JsonNode node = rootNode.get(field);
-                if (node.isTextual()) {
-                    result.put(field, node.asText());
-                } else if (node.isInt()) {
-                    result.put(field, node.asInt());
-                } else if (node.isLong()) {
-                    result.put(field, node.asLong());
-                } else if (node.isDouble()) {
-                    result.put(field, node.asDouble());
-                } else if (node.isBoolean()) {
-                    result.put(field, node.asBoolean());
-                } else if (node.isArray() || node.isObject()) {
-                    result.put(field, objectMapper.convertValue(node, Object.class));
-                } else if (node.isNull()) {
-                    result.put(field, null);
-                }
-            }
-        }
-        return result;
-    }
-
     public Boolean login(HttpServletRequest request, HttpServletResponse response) throws IOException
     {
         Claims claims = Jwts.claims();
         String subject = null;
 
-        Map<String, Object> requestBody = extractRequestFields(request, config.getClaimFields());
+        HashMap<String, Object> requestBody = (HashMap<String, Object>)request.getAttribute("user");
+        if(requestBody == null)
+        {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return false;
+        }
 
         for (String field : requestBody.keySet()) {
             Object value = requestBody.get(field);
